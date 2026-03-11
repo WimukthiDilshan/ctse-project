@@ -1,0 +1,73 @@
+version: '3.8'
+
+services:
+  student-db:
+    image: mongo:latest
+    ports:
+      - "27017:27017"
+
+  teacher-db:
+    image: mongo:latest
+    ports:
+      - "27018:27017"
+
+  course-db:
+    image: mongo:latest
+    ports:
+      - "27019:27017"
+
+  result-db:
+    image: mongo:latest
+    ports:
+      - "27020:27017"
+
+  student-service:
+    build: ./services/student-service
+    ports:
+      - "5001:5001"
+    environment:
+      - MONGO_URI=mongodb://student-db:27017/student_db
+      - RESULT_SERVICE_URL=http://result-service:5004
+    depends_on:
+      - student-db
+
+  teacher-service:
+    build: ./services/teacher-service
+    ports:
+      - "5002:5002"
+    environment:
+      - MONGO_URI=mongodb://teacher-db:27017/teacher_db
+      - RESULT_SERVICE_URL=http://result-service:5004
+    depends_on:
+      - teacher-db
+
+  course-service:
+    build: ./services/course-service
+    ports:
+      - "5003:5003"
+    environment:
+      - MONGO_URI=mongodb://course-db:27017/course_db
+      - TEACHER_SERVICE_URL=http://teacher-service:5002
+    depends_on:
+      - course-db
+
+  result-service:
+    build: ./services/result-service
+    ports:
+      - "5004:5004"
+    environment:
+      - MONGO_URI=mongodb://result-db:27017/result_db
+      - STUDENT_SERVICE_URL=http://student-service:5001
+      - COURSE_SERVICE_URL=http://course-service:5003
+    depends_on:
+      - result-db
+
+  frontend:
+    build: ./frontend
+    ports:
+      - "3000:3000"
+    depends_on:
+      - student-service
+      - teacher-service
+      - course-service
+      - result-service

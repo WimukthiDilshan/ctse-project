@@ -1,0 +1,46 @@
+name: SMS Microservices CI/CD
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build-and-scan:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        service: [student-service, teacher-service, course-service, result-service]
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Set up Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: 18
+
+    - name: Install dependencies
+      run: |
+        cd services/${{ matrix.service }}
+        npm install
+
+    - name: Run Snyk to check for vulnerabilities
+      uses: snyk/actions/node@master
+      continue-on-error: true # For demonstration/free tier
+      env:
+        SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+      with:
+        args: --severity-threshold=high
+        command: monitor # Monitor the project in Snyk dashboard
+
+    - name: Build Docker image
+      run: |
+        docker build -t sms-${{ matrix.service }}:latest services/${{ matrix.service }}
+
+    - name: Push to Registry (Conditional)
+      if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+      run: |
+        # In a real scenario, login and push to Docker Hub/Azure CR/ECR
+        echo "Pushing sms-${{ matrix.service }} to registry..."
