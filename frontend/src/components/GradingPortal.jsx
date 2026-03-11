@@ -10,6 +10,7 @@ function GradingPortal() {
     const [formData, setFormData] = useState({ studentId: '', courseId: '', marks: '', subject: '' });
     const [students, setStudents] = useState([]);
     const [courses, setCourses] = useState([]);
+    const [filteredCourses, setFilteredCourses] = useState([]);
     const [status, setStatus] = useState(null);
     const currentUser = JSON.parse(localStorage.getItem('user'));
 
@@ -21,6 +22,23 @@ function GradingPortal() {
             setCourses([{ _id: '1', title: 'Advanced Web Development' }, { _id: '2', title: 'Cloud Computing' }]);
         });
     }, []);
+
+    useEffect(() => {
+        if (!formData.studentId) {
+            setFilteredCourses([]);
+            return;
+        }
+
+        // Fetch student's enrollments/results from Result Service
+        axios.get(`${RESULT_API}/student/${formData.studentId}`).then(res => {
+            const enrolledCourseIds = res.data.map(r => r.courseId);
+            const filtered = courses.filter(c => enrolledCourseIds.includes(c._id));
+            setFilteredCourses(filtered);
+        }).catch(() => {
+            // Fallback for demo if no real service connection
+            setFilteredCourses(courses);
+        });
+    }, [formData.studentId, courses]);
 
     const isAuthorized = currentUser && (currentUser.role === 'Master Admin' || currentUser.role === 'Result Lead');
 
@@ -66,9 +84,15 @@ function GradingPortal() {
                     onChange={e => setFormData({ ...formData, courseId: e.target.value })}
                     required
                 >
-                    <option value="">Select Course (from Course Svc)</option>
-                    {courses.map(c => <option key={c._id} value={c._id}>{c.title}</option>)}
+                    <option value="">{formData.studentId ? 'Select an Enrolled Course' : 'Select a Student First'}</option>
+                    {filteredCourses.map(c => <option key={c._id} value={c._id}>{c.title}</option>)}
                 </select>
+
+                {formData.studentId && filteredCourses.length === 0 && (
+                    <p style={{ color: 'var(--text-dim)', fontSize: '0.8rem', marginTop: '-0.5rem' }}>
+                        No active enrollments found for this student.
+                    </p>
+                )}
 
                 <input
                     type="text"

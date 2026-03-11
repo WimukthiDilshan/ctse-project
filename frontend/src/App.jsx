@@ -77,7 +77,7 @@ function App() {
                     }}
                 >
                     <LogOut size={20} color="#ff4d4d" />
-                    <span style={{ color: '#ff4d4d' }}>Terminating Session</span>
+                    <span style={{ color: '#ff4d4d' }}>Logout</span>
                 </button>
             </aside>
 
