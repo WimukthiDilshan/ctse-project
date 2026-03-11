@@ -29,8 +29,40 @@ const studentSchema = new mongoose.Schema({
 
 const Student = mongoose.model('Student', studentSchema);
 
+// User Schema (Shared Auth Hub)
+const userSchema = new mongoose.Schema({
+    email: { type: String, required: true, unique: true },
+    password: { type: String, required: true },
+    role: { type: String, enum: ['Master Admin', 'Student', 'Teacher', 'Course Lead', 'Result Lead'], default: 'Student' }
+});
+
+const User = mongoose.model('User', userSchema);
+
 // Routes
 app.get('/health', (req, res) => res.send('Student Service is healthy'));
+
+// Authentication Endpoints
+app.post('/api/auth/register', async (req, res) => {
+    try {
+        const { email, password, role } = req.body;
+        const user = new User({ email, password, role });
+        await user.save();
+        res.status(201).json({ message: 'Registration Successful! You can now login.' });
+    } catch (err) {
+        res.status(400).json({ error: 'User already exists or invalid data' });
+    }
+});
+
+app.post('/api/auth/login', async (req, res) => {
+    try {
+        const { email, password } = req.body;
+        const user = await User.findOne({ email, password });
+        if (!user) return res.status(401).json({ error: 'Invalid credentials' });
+        res.json({ email: user.email, role: user.role, id: user._id });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
 
 // Create Student
 app.post('/api/students', async (req, res) => {
