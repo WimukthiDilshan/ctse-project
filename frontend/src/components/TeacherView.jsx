@@ -9,6 +9,7 @@ function TeacherView() {
     const [formData, setFormData] = useState({ name: '', email: '', subject: '', bio: '' });
     const [stats, setStats] = useState(null);
     const [showForm, setShowForm] = useState(false);
+    const currentUser = JSON.parse(localStorage.getItem('user'));
 
     useEffect(() => {
         fetchTeachers();

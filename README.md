@@ -58,15 +58,16 @@ Services integrate via RESTful APIs over an internal network:
 ## 4. Security & Access Control (Advanced RBAC)
 The system implements a granular **Role-Based Access Control (RBAC)** system. Users can register as one of 5 types, with the dashboard dynamically restricting visibility based on their profile.
 
-| Role | Access Restricted To |
-| :--- | :--- |
-| **Master Admin** | Superuser access to all services and data. |
-| **Student** | Can only interact with the **Student Hub**. |
-| **Teacher** | Can only interact with **Teacher Command**. |
-| **Course Lead** | Can only interact with **Course Navigator**. |
-| **Result Lead** | Can only interact with **Grading Portal**. |
+| Role | Access Restricted To | Description |
+| :--- | :--- | :--- |
+| **Master Admin** | Superuser access to all services and data. | Full control over the system. |
+| **Student** | Can only interact with the **Student Hub**. | View personal profile, results, and enroll in courses. |
+| **Teacher** | Can only interact with **Teacher Command**. | Manage courses, view student results, and update grades. |
+| **Course Lead** | Can only interact with **Course Navigator**. | Oversee course content, assign teachers, and manage curriculum. |
+| **Result Lead** | Grading Portal | Post results and manage student ranks. |
 
-- **Security Implementation**: The `Student Service` acts as the Authentication Hub.
+- **Authentication Hub**: The `Student Service` serves as the core identity provider.
+- **Student-Led Actions**: Students can **Self-Register** their profile and **Enroll** in courses. Enrollment integrates with the `Course Service` (to fetch options) and `Result Service` (to initialize records).
 - **Login Persistence**: Sessions are secured via local browser storage.
 - **UI Logic**: Responsive sidebar allows each member to demonstrate their specific service in isolation.
 
@@ -83,11 +84,13 @@ The system implements a granular **Role-Based Access Control (RBAC)** system. Us
 ## 6. API Contract (Contractual Summary)
 | Service | Method | Endpoint | Description |
 | :--- | :--- | :--- | :--- |
-| **Student** | POST | `/api/students` | Register a new student |
+| **Auth Hub** | POST | `/api/auth/register` | Register new user with specific role |
+| **Auth Hub** | POST | `/api/auth/login` | Validate and start secure session |
+| **Student** | POST | `/api/students` | Self-Register/Create student profile |
 | **Student** | GET | `/api/students/:id/dashboard` | Integration: Fetch profile + results |
 | **Teacher** | GET | `/api/teachers/:id/class-stats` | Integration: Fetch subject analytics |
 | **Course** | GET | `/api/courses/:id/full-info` | Integration: Fetch course + faculty bio |
-| **Result** | POST | `/api/results` | Trigger: Save result + Update Student Rank |
+| **Result** | POST | `/api/results` | Integration: Post result + update student rank |
 
 ---
 

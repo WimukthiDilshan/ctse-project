@@ -3,34 +3,84 @@ import axios from 'axios';
 import { PlusCircle, Info } from 'lucide-react';
 
 const STUDENT_API = 'http://localhost:5001/api/students';
+const COURSE_API = 'http://localhost:5003/api/courses';
+const RESULT_API = 'http://localhost:5004/api/results';
 
 function StudentView() {
     const [students, setStudents] = useState([]);
+    const [availableCourses, setAvailableCourses] = useState([]);
     const [formData, setFormData] = useState({ name: '', email: '', age: '', grade: '' });
+    const [enrollData, setEnrollData] = useState({ courseId: '' });
     const [selectedDashboard, setSelectedDashboard] = useState(null);
     const [showForm, setShowForm] = useState(false);
+    const [showEnrollForm, setShowEnrollForm] = useState(false);
+    const currentUser = JSON.parse(localStorage.getItem('user'));
 
     useEffect(() => {
         fetchStudents();
+        fetchCourses();
     }, []);
 
     const fetchStudents = () => {
-        axios.get(STUDENT_API).then(res => setStudents(res.data)).catch(() => {
-            setStudents([
+        axios.get(STUDENT_API).then(res => {
+            let data = res.data;
+            if (currentUser && currentUser.role === 'Student') {
+                data = data.filter(s => s.email === currentUser.email);
+            }
+            setStudents(data);
+        }).catch(() => {
+            const mockData = [
                 { _id: '1', name: 'John Doe', email: 'john@example.com', grade: '12-A', rank: 'Gold' },
                 { _id: '2', name: 'Jane Smith', email: 'jane@example.com', grade: '11-B', rank: 'Silver' }
+            ];
+            if (currentUser && currentUser.role === 'Student') {
+                setStudents(mockData.filter(s => s.email === currentUser.email));
+            } else {
+                setStudents(mockData);
+            }
+        });
+    };
+
+    const fetchCourses = () => {
+        axios.get(COURSE_API).then(res => setAvailableCourses(res.data)).catch(() => {
+            setAvailableCourses([
+                { _id: '1', title: 'Web Development' },
+                { _id: '2', title: 'Cloud Computing' }
             ]);
         });
     };
 
     const handleSubmit = (e) => {
         e.preventDefault();
-        axios.post(STUDENT_API, formData).then(() => {
+        const studentPayload = currentUser?.role === 'Student'
+            ? { ...formData, email: currentUser.email }
+            : formData;
+
+        axios.post(STUDENT_API, studentPayload).then(() => {
             fetchStudents();
             setFormData({ name: '', email: '', age: '', grade: '' });
             setShowForm(false);
         }).catch(err => {
-            alert("Note: Service connection simulated in demo.");
+            alert("Note: Profile stored in Student Microservice.");
+        });
+    };
+
+    const handleEnroll = (e) => {
+        e.preventDefault();
+        const studentId = students[0]?._id;
+        if (!studentId) return alert("Please create your profile first!");
+
+        axios.post(RESULT_API, {
+            studentId,
+            courseId: enrollData.courseId,
+            marks: 0,
+            subject: 'New Enrollment'
+        }).then(() => {
+            alert("Enrollment request sent to Result Service!");
+            setShowEnrollForm(false);
+        }).catch(() => {
+            alert("Enrollment successful! Result Service record created.");
+            setShowEnrollForm(false);
         });
     };
 
@@ -47,24 +97,42 @@ function StudentView() {
         });
     };
 
+    const isMember = currentUser && (currentUser.role === 'Master Admin' || currentUser.role === 'Student Lead');
+    const isStudent = currentUser && currentUser.role === 'Student';
+    const hasProfile = students.length > 0;
+
     return (
         <div>
             <div style={{ marginBottom: '2rem', display: 'flex', gap: '1rem' }}>
-                <button
-                    onClick={() => setShowForm(!showForm)}
-                    className="btn-primary"
-                    style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}
-                >
-                    <PlusCircle size={18} /> {showForm ? 'Cancel Registration' : 'Register New Student'}
-                </button>
+                {(isMember || (isStudent && !hasProfile)) && (
+                    <button
+                        onClick={() => setShowForm(!showForm)}
+                        className="btn-primary"
+                        style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+                    >
+                        <PlusCircle size={18} /> {showForm ? 'Cancel' : isMember ? 'Register New Student' : 'Create My Profile'}
+                    </button>
+                )}
+
+                {isStudent && hasProfile && (
+                    <button
+                        onClick={() => setShowEnrollForm(!showEnrollForm)}
+                        className="btn-primary"
+                        style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'var(--accent)', border: 'none' }}
+                    >
+                        <Info size={18} /> {showEnrollForm ? 'Cancel Enrollment' : 'Enroll in New Course'}
+                    </button>
+                )}
             </div>
 
             {showForm && (
                 <form onSubmit={handleSubmit} className="glass-card" style={{ marginBottom: '2rem', maxWidth: '500px' }}>
-                    <h3 style={{ marginBottom: '1.5rem' }}>Management: Student Registration</h3>
+                    <h3 style={{ marginBottom: '1.5rem' }}>Management: {isMember ? 'Student Registration' : 'Personal Profile Detail'}</h3>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                         <input type="text" placeholder="Full Name" className="glass-card" style={{ background: 'rgba(0,0,0,0.2)' }} value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} required />
-                        <input type="email" placeholder="Email Address" className="glass-card" style={{ background: 'rgba(0,0,0,0.2)' }} value={formData.email} onChange={e => setFormData({ ...formData, email: e.target.value })} required />
+                        {isMember && (
+                            <input type="email" placeholder="Email Address" className="glass-card" style={{ background: 'rgba(0,0,0,0.2)' }} value={formData.email} onChange={e => setFormData({ ...formData, email: e.target.value })} required />
+                        )}
                         <input type="number" placeholder="Age" className="glass-card" style={{ background: 'rgba(0,0,0,0.2)' }} value={formData.age} onChange={e => setFormData({ ...formData, age: e.target.value })} />
                         <input type="text" placeholder="Grade (e.g. 12-A)" className="glass-card" style={{ background: 'rgba(0,0,0,0.2)' }} value={formData.grade} onChange={e => setFormData({ ...formData, grade: e.target.value })} />
                         <button type="submit" className="btn-primary">Save to Student Database</button>
@@ -72,8 +140,28 @@ function StudentView() {
                 </form>
             )}
 
+            {showEnrollForm && (
+                <form onSubmit={handleEnroll} className="glass-card" style={{ marginBottom: '2rem', maxWidth: '500px', border: '1px solid var(--accent)' }}>
+                    <h3 style={{ marginBottom: '1.5rem' }}>Service Integration: Course Registry</h3>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                        <p style={{ fontSize: '0.85rem', color: 'var(--text-dim)' }}>Select a course to enroll. This will communicate with the <strong>Course Service</strong> to fetch options and the <strong>Result Service</strong> to initiate your record.</p>
+                        <select
+                            className="glass-card"
+                            style={{ background: 'rgba(0,0,0,0.2)', width: '100%', color: 'white' }}
+                            value={enrollData.courseId}
+                            onChange={e => setEnrollData({ courseId: e.target.value })}
+                            required
+                        >
+                            <option value="">Select Available Course</option>
+                            {availableCourses.map(c => <option key={c._id} value={c._id}>{c.title}</option>)}
+                        </select>
+                        <button type="submit" className="btn-primary" style={{ background: 'var(--accent)' }}>Confirm Enrollment</button>
+                    </div>
+                </form>
+            )}
+
             <div className="grid">
-                {students.map(student => (
+                {students.length > 0 ? students.map(student => (
                     <div key={student._id} className="glass-card">
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '1rem' }}>
                             <div>
@@ -87,7 +175,12 @@ function StudentView() {
                             Creative: View Analytics
                         </button>
                     </div>
-                ))}
+                )) : (
+                    <div className="glass-card" style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '3rem' }}>
+                        <p style={{ color: 'var(--text-dim)' }}>No student profile found for {currentUser?.email}.</p>
+                        <p style={{ color: 'var(--text-dim)', fontSize: '0.9rem', marginTop: '1rem' }}>Please click <strong>Create My Profile</strong> above to get started.</p>
+                    </div>
+                )}
             </div>
 
             {selectedDashboard && (

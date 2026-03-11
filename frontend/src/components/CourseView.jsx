@@ -11,6 +11,7 @@ function CourseView() {
     const [formData, setFormData] = useState({ title: '', code: '', credits: '', teacherId: '' });
     const [detailedCourse, setDetailedCourse] = useState(null);
     const [showForm, setShowForm] = useState(false);
+    const currentUser = JSON.parse(localStorage.getItem('user'));
 
     useEffect(() => {
         fetchCourses();

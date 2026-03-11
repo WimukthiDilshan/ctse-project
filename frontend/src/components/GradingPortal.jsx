@@ -11,6 +11,7 @@ function GradingPortal() {
     const [students, setStudents] = useState([]);
     const [courses, setCourses] = useState([]);
     const [status, setStatus] = useState(null);
+    const currentUser = JSON.parse(localStorage.getItem('user'));
 
     useEffect(() => {
         axios.get(STUDENT_API).then(res => setStudents(res.data)).catch(() => {
@@ -20,6 +21,16 @@ function GradingPortal() {
             setCourses([{ _id: '1', title: 'Advanced Web Development' }, { _id: '2', title: 'Cloud Computing' }]);
         });
     }, []);
+
+    const isAuthorized = currentUser && (currentUser.role === 'Master Admin' || currentUser.role === 'Result Lead');
+
+    if (!isAuthorized) {
+        return (
+            <div className="glass-card" style={{ textAlign: 'center', padding: '3rem' }}>
+                <p style={{ color: 'var(--text-dim)' }}>Access Denied: Only the Result Lead or Master Admin can post grades.</p>
+            </div>
+        );
+    }
 
     const handleSubmit = (e) => {
         e.preventDefault();
