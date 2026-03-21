@@ -7,7 +7,7 @@ on:
     branches: [ "main" ]
 
 jobs:
-  build-and-scan:
+  build-and-test:
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -34,3 +34,28 @@ jobs:
     - name: Build Docker image
       run: |
         docker build -t sms-${{ matrix.service }}:latest services/${{ matrix.service }}
+
+  deploy-to-azure:
+    needs: build-and-test
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Log in to Azure
+      uses: azure/login@v1
+      with:
+        creds: ${{ secrets.AZURE_CREDENTIALS }}
+    
+    - name: Deploy to Azure Container Apps
+      run: |
+        az deployment group create \
+          --resource-group ctse-project-rg \
+          --template-file apps.json \
+          --parameters \
+            studentMongoUri="${{ secrets.MONGO_URI }}" \
+            teacherMongoUri="${{ secrets.MONGO_URI }}" \
+            courseMongoUri="${{ secrets.MONGO_URI }}" \
+            resultMongoUri="${{ secrets.MONGO_URI }}" \
+            studentJwtSecret="${{ secrets.JWT_SECRET }}"
