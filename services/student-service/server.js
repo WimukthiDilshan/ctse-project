@@ -3,15 +3,22 @@ const mongoose = require('mongoose');
 const axios = require('axios');
 const cors = require('cors');
 const dotenv = require('dotenv');
+const helmet = require('helmet');
+const rateLimit = require('express-rate-limit');
+const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
 
 dotenv.config();
 
 const app = express();
 app.use(cors());
+app.use(helmet());
 app.use(express.json());
+app.use(rateLimit({ windowMs: 15 * 60 * 1000, max: 300 }));
 
 const PORT = process.env.PORT || 5001;
 const RESULT_SERVICE_URL = process.env.RESULT_SERVICE_URL || 'http://localhost:5004';
+const JWT_SECRET = process.env.JWT_SECRET || 'change-me-in-production';
 
 // MongoDB Connection
 mongoose.connect(process.env.MONGO_URI || 'mongodb://localhost:27017/student_db')
@@ -45,7 +52,8 @@ app.get('/health', (req, res) => res.send('Student Service is healthy'));
 app.post('/api/auth/register', async (req, res) => {
     try {
         const { email, password, role } = req.body;
-        const user = new User({ email, password, role });
+        const hashedPassword = await bcrypt.hash(password, 10);
+        const user = new User({ email, password: hashedPassword, role });
         await user.save();
         res.status(201).json({ message: 'Registration Successful! You can now login.' });
     } catch (err) {
@@ -56,9 +64,13 @@ app.post('/api/auth/register', async (req, res) => {
 app.post('/api/auth/login', async (req, res) => {
     try {
         const { email, password } = req.body;
-        const user = await User.findOne({ email, password });
+        const user = await User.findOne({ email });
         if (!user) return res.status(401).json({ error: 'Invalid credentials' });
-        res.json({ email: user.email, role: user.role, id: user._id });
+        const isValid = await bcrypt.compare(password, user.password);
+        if (!isValid) return res.status(401).json({ error: 'Invalid credentials' });
+
+        const token = jwt.sign({ id: user._id, role: user.role }, JWT_SECRET, { expiresIn: '1h' });
+        res.json({ email: user.email, role: user.role, id: user._id, token });
     } catch (err) {
         res.status(500).json({ error: err.message });
     }

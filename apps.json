@@ -1,7 +1,23 @@
 {
   "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
   "contentVersion": "1.0.0.0",
-  "parameters": {},
+  "parameters": {
+    "studentMongoUri": {
+      "type": "securestring"
+    },
+    "teacherMongoUri": {
+      "type": "securestring"
+    },
+    "courseMongoUri": {
+      "type": "securestring"
+    },
+    "resultMongoUri": {
+      "type": "securestring"
+    },
+    "studentJwtSecret": {
+      "type": "securestring"
+    }
+  },
   "variables": {
     "envId": "[resourceId('Microsoft.App/managedEnvironments', 'ctse-env')]"
   },
@@ -24,8 +40,48 @@
       "location": "southeastasia",
       "properties": {
         "managedEnvironmentId": "[variables('envId')]",
-        "configuration": { "ingress": { "external": true, "targetPort": 5001 } },
-        "template": { "containers": [{ "name": "student-service", "image": "wimukthidocker/student-service:latest", "env": [{"name": "MONGO_URI", "value": "mongodb+srv://wimukthi2010_db_user:OOamEpUlOFQ8lPWn@cluster0.awyrjzu.mongodb.net/student_db?appName=Cluster0"}, {"name": "RESULT_SERVICE_URL", "value": "http://result-service"}, {"name": "FORCE_UPDATE", "value": "6"}] }] }
+        "configuration": {
+          "ingress": {
+            "external": true,
+            "targetPort": 5001
+          },
+          "secrets": [
+            {
+              "name": "student-mongo-uri",
+              "value": "[parameters('studentMongoUri')]"
+            },
+            {
+              "name": "student-jwt-secret",
+              "value": "[parameters('studentJwtSecret')]"
+            }
+          ]
+        },
+        "template": {
+          "containers": [
+            {
+              "name": "student-service",
+              "image": "wimukthidocker/student-service:latest",
+              "env": [
+                {
+                  "name": "MONGO_URI",
+                  "secretRef": "student-mongo-uri"
+                },
+                {
+                  "name": "JWT_SECRET",
+                  "secretRef": "student-jwt-secret"
+                },
+                {
+                  "name": "RESULT_SERVICE_URL",
+                  "value": "http://result-service"
+                },
+                {
+                  "name": "FORCE_UPDATE",
+                  "value": "6"
+                }
+              ]
+            }
+          ]
+        }
       }
     },
     {
@@ -35,8 +91,44 @@
       "location": "southeastasia",
       "properties": {
         "managedEnvironmentId": "[variables('envId')]",
-        "configuration": { "ingress": { "external": true, "targetPort": 5002 } },
-        "template": { "containers": [{ "name": "teacher-service", "image": "wimukthidocker/teacher-service:latest", "env": [{"name": "MONGO_URI", "value": "mongodb+srv://wimukthi2010_db_user:OOamEpUlOFQ8lPWn@cluster0.awyrjzu.mongodb.net/teacher_db?appName=Cluster0"}, {"name": "RESULT_SERVICE_URL", "value": "http://result-service"}, {"name": "STUDENT_SERVICE_URL", "value": "http://student-service"}, {"name": "FORCE_UPDATE", "value": "7"}] }] }
+        "configuration": {
+          "ingress": {
+            "external": true,
+            "targetPort": 5002
+          },
+          "secrets": [
+            {
+              "name": "teacher-mongo-uri",
+              "value": "[parameters('teacherMongoUri')]"
+            }
+          ]
+        },
+        "template": {
+          "containers": [
+            {
+              "name": "teacher-service",
+              "image": "wimukthidocker/teacher-service:latest",
+              "env": [
+                {
+                  "name": "MONGO_URI",
+                  "secretRef": "teacher-mongo-uri"
+                },
+                {
+                  "name": "RESULT_SERVICE_URL",
+                  "value": "http://result-service"
+                },
+                {
+                  "name": "STUDENT_SERVICE_URL",
+                  "value": "http://student-service"
+                },
+                {
+                  "name": "FORCE_UPDATE",
+                  "value": "7"
+                }
+              ]
+            }
+          ]
+        }
       }
     },
     {
@@ -46,8 +138,36 @@
       "location": "southeastasia",
       "properties": {
         "managedEnvironmentId": "[variables('envId')]",
-        "configuration": { "ingress": { "external": true, "targetPort": 5003 } },
-        "template": { "containers": [{ "name": "course-service", "image": "wimukthidocker/course-service:latest", "env": [{"name": "MONGO_URI", "value": "mongodb+srv://wimukthi2010_db_user:OOamEpUlOFQ8lPWn@cluster0.awyrjzu.mongodb.net/course_db?appName=Cluster0"}, {"name": "FORCE_UPDATE", "value": "6"}] }] }
+        "configuration": {
+          "ingress": {
+            "external": true,
+            "targetPort": 5003
+          },
+          "secrets": [
+            {
+              "name": "course-mongo-uri",
+              "value": "[parameters('courseMongoUri')]"
+            }
+          ]
+        },
+        "template": {
+          "containers": [
+            {
+              "name": "course-service",
+              "image": "wimukthidocker/course-service:latest",
+              "env": [
+                {
+                  "name": "MONGO_URI",
+                  "secretRef": "course-mongo-uri"
+                },
+                {
+                  "name": "FORCE_UPDATE",
+                  "value": "6"
+                }
+              ]
+            }
+          ]
+        }
       }
     },
     {
@@ -57,8 +177,36 @@
       "location": "southeastasia",
       "properties": {
         "managedEnvironmentId": "[variables('envId')]",
-        "configuration": { "ingress": { "external": true, "targetPort": 5004 } },
-        "template": { "containers": [{ "name": "result-service", "image": "wimukthidocker/result-service:latest", "env": [{"name": "MONGO_URI", "value": "mongodb+srv://wimukthi2010_db_user:OOamEpUlOFQ8lPWn@cluster0.awyrjzu.mongodb.net/result_db?appName=Cluster0"}, {"name": "FORCE_UPDATE", "value": "6"}] }] }
+        "configuration": {
+          "ingress": {
+            "external": true,
+            "targetPort": 5004
+          },
+          "secrets": [
+            {
+              "name": "result-mongo-uri",
+              "value": "[parameters('resultMongoUri')]"
+            }
+          ]
+        },
+        "template": {
+          "containers": [
+            {
+              "name": "result-service",
+              "image": "wimukthidocker/result-service:latest",
+              "env": [
+                {
+                  "name": "MONGO_URI",
+                  "secretRef": "result-mongo-uri"
+                },
+                {
+                  "name": "FORCE_UPDATE",
+                  "value": "6"
+                }
+              ]
+            }
+          ]
+        }
       }
     }
   ]

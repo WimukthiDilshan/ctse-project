@@ -3,12 +3,16 @@ const mongoose = require('mongoose');
 const axios = require('axios');
 const cors = require('cors');
 const dotenv = require('dotenv');
+const helmet = require('helmet');
+const rateLimit = require('express-rate-limit');
 
 dotenv.config();
 
 const app = express();
 app.use(cors());
+app.use(helmet());
 app.use(express.json());
+app.use(rateLimit({ windowMs: 15 * 60 * 1000, max: 300 }));
 
 const PORT = process.env.PORT || 5002;
 const RESULT_SERVICE_URL = process.env.RESULT_SERVICE_URL || 'http://localhost:5004';
