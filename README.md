@@ -1,130 +1,170 @@
-# SLIIT | DEPARTMENT OF COMPUTER SCIENCE & SOFTWARE ENGINEERING
-## Module: Current Trends in Software Engineering (SE4010)
-### Cloud Computing Assignment - School Management System (SMS)
+# School Management System (Microservices)
 
----
+Cloud-ready microservices project for CTSE (SE4010), implemented with 4 backend services and a React frontend.
 
-## 1. Shared Architecture Diagram
-The following diagram illustrates the four microservices, their isolated databases, and the creative inter-service communication paths.
+## Overview
+
+- Frontend: React + Vite
+- Backends: Node.js + Express (4 microservices)
+- Datastores: isolated MongoDB containers per service for local development
+- Deployment target: Azure Container Apps via ARM template
+- CI/CD: GitHub Actions with build, scan, image push, and deploy workflows
+
+For a detailed narrative summary, see [PROJECT_OVERVIEW.md](PROJECT_OVERVIEW.md).
+
+## Architecture Diagram
 
 ```mermaid
 graph TD
-    User((User))
-    Frontend[React Dashboard]
-    
-    subgraph "Cloud Infrastructure / Docker Network"
-        StudentSvc[Student Service]
-        TeacherSvc[Teacher Service]
-        CourseSvc[Course Service]
-        ResultSvc[Result Service]
-        
-        DB1[(Student DB)]
-        DB2[(Teacher DB)]
-        DB3[(Course DB)]
-        DB4[(Result DB)]
-    end
+        User((User))
+        Frontend[React Dashboard]
 
-    User --> Frontend
-    Frontend --> StudentSvc
-    Frontend --> TeacherSvc
-    Frontend --> CourseSvc
-    Frontend --> ResultSvc
+        subgraph "Microservices"
+                StudentSvc[Student Service]
+                TeacherSvc[Teacher Service]
+                CourseSvc[Course Service]
+                ResultSvc[Result Service]
+        end
 
-    %% Inter-service Communication
-    StudentSvc -- "GET /api/results" --> ResultSvc
-    TeacherSvc -- "GET /api/results/stats" --> ResultSvc
-    CourseSvc -- "GET /api/teachers/:id" --> TeacherSvc
-    ResultSvc -- "PATCH /api/students/:id/rank" --> StudentSvc
+        subgraph "Local Databases"
+                DB1[(student_db)]
+                DB2[(teacher_db)]
+                DB3[(course_db)]
+                DB4[(result_db)]
+        end
+
+        User --> Frontend
+        Frontend --> StudentSvc
+        Frontend --> TeacherSvc
+        Frontend --> CourseSvc
+        Frontend --> ResultSvc
+
+        StudentSvc --> DB1
+        TeacherSvc --> DB2
+        CourseSvc --> DB3
+        ResultSvc --> DB4
+
+        StudentSvc -- "GET /api/results/student/:id" --> ResultSvc
+        TeacherSvc -- "GET /api/results/stats/subject/:subject" --> ResultSvc
+        TeacherSvc -- "GET /api/students/:id" --> StudentSvc
+        CourseSvc -- "GET /api/teachers/:id" --> TeacherSvc
+        ResultSvc -- "PATCH /api/students/:id/rank" --> StudentSvc
 ```
 
----
+## Services and Responsibilities
 
-## 2. Microservice Rationale
-Each service represents a core component of a cohesive educational ecosystem:
-- **Student Service**: Responsible for high-availability learner profile management.
-- **Teacher Service**: Manages faculty records and provides subject-level analytics.
-- **Course Service**: Serves as the curriculum hub, ensuring course data is enriched with faculty insights.
-- **Result Service**: Acts as the central grading and synchronization engine.
+1. Student Service
+- Auth endpoints (register/login)
+- Student profile endpoints
+- Dashboard aggregation using Result Service
 
----
+2. Teacher Service
+- Teacher profile endpoints
+- Mentor/mentee management
+- Subject stats integration with Result Service
 
-## 3. Inter-Service Communication (With Examples)
-Services integrate via RESTful APIs over an internal network:
-- **Example 1**: The `Result Service` sends a `PATCH` request to the `Student Service` to update a student's `rank` (milestone) immediately after a grade is posted.
-- **Example 2**: The `Course Service` performs a `GET` request to the `Teacher Service` to include the instructor's bio when a user explores course details.
-- **Example 3**: The `Teacher Service` calls the `Student Service` to verify students exist before registering them as mentees, enabling mentor-mentee relationship tracking.
+3. Course Service
+- Course management endpoints
+- Teacher enrichment for full course info
 
----
+4. Result Service
+- Result creation and retrieval
+- Subject-level stats
+- Rank synchronization to Student Service
 
-## 4. Security & Access Control (Advanced RBAC)
-The system implements a granular **Role-Based Access Control (RBAC)** system. Users can register as one of 5 types, with the dashboard dynamically restricting visibility based on their profile.
+## Key API Endpoints
 
-| Role | Access Restricted To | Description |
-| :--- | :--- | :--- |
-| **Master Admin** | Superuser access to all services and data. | Full control over the system. |
-| **Student** | Can only interact with the **Student Hub**. | View personal profile, results, and enroll in courses. |
-| **Teacher** | Can only interact with **Teacher Command**. | Manage courses, view student results, and update grades. |
-| **Course Lead** | Can only interact with **Course Navigator**. | Oversee course content, assign teachers, and manage curriculum. |
-| **Result Lead** | Grading Portal | Post results and manage student ranks. |
+### Student Service
+- POST /api/auth/register
+- POST /api/auth/login
+- POST /api/students
+- GET /api/students
+- GET /api/students/:id
+- GET /api/students/:id/dashboard
+- PATCH /api/students/:id/rank
 
-- **Authentication Hub**: The `Student Service` serves as the core identity provider.
-- **Student-Led Actions**: Students can **Self-Register** their profile and **Enroll** in courses. Enrollment integrates with the `Course Service` (to fetch options) and `Result Service` (to initialize records).
-- **Login Persistence**: Sessions are secured via local browser storage.
-- **UI Logic**: Responsive sidebar allows each member to demonstrate their specific service in isolation.
+### Teacher Service
+- POST /api/teachers
+- GET /api/teachers
+- GET /api/teachers/:id
+- GET /api/teachers/:id/class-stats
+- POST /api/teachers/:id/add-mentee
+- GET /api/teachers/:id/mentees
+- DELETE /api/teachers/:id/mentees/:studentId
+- GET /api/teachers/:id/dashboard
 
----
+### Course Service
+- POST /api/courses
+- GET /api/courses
+- GET /api/courses/:id
+- GET /api/courses/:id/full-info
 
-## 5. Challenges & Solutions
-- **Challenge**: Resolving Cross-Origin Resource Sharing (CORS) between the frontend and multiple back-end services.
-- **Solution**: Implemented `cors` middleware across all Node.js services to securely allow required origins.
-- **Challenge**: Synchronizing state (Rank) across disparate databases.
-- **Solution**: Implemented an event-driven style REST hook where the `Result Service` triggers a rank update in the `Student Service`.
-- **Challenge**: Teachers need to establish mentor-mentee relationships with students.
-- **Solution**: Extended the `Teacher Service` to integrate with the `Student Service`, allowing teachers to register students as mentees with automatic validation and role-based dashboard views.
+### Result Service
+- POST /api/results
+- GET /api/results/student/:studentId
+- GET /api/results/stats/subject/:subject
 
----
+## Security Highlights
 
-## 5.1 Teacher Mentor-Mentee Feature
-The Teacher Service now supports comprehensive mentor-mentee relationship management:
+- Security headers with Helmet in all services
+- Rate limiting in all services
+- Password hashing and JWT issuance in Student Service
+- Secret-based parameter model in apps.json for cloud deployment
 
-### Key Features:
-- **Register Mentees**: Teachers can add registered students as mentees via `POST /api/teachers/:id/add-mentee`
-- **Validate Students**: System automatically verifies student existence in Student Service before adding
-- **Prevent Duplicates**: Cannot add the same student twice as a mentee
-- **View Mentees**: Teachers can view all their mentees with `/api/teachers/:id/mentees`
-- **Remove Mentees**: Teachers can remove mentees using `DELETE /api/teachers/:id/mentees/:studentId`
-- **Dashboard View**: Comprehensive dashboard showing mentees + class statistics at `/api/teachers/:id/dashboard`
+## DevOps and CI/CD
 
-### Data Stored:
-Each mentee relationship includes:
-- Student ID and Name
-- Student Email
-- Date Mentee was Added
-- Teacher maintains full mentee history
+Workflows are in .github/workflows:
 
-For complete documentation, see [TEACHER_SERVICE_MENTOR_GUIDE.md](TEACHER_SERVICE_MENTOR_GUIDE.md)
+- ci-cd.yml
+    - Installs dependencies
+    - Runs Snyk scan
+    - Builds Docker images
+    - Pushes images to Docker Hub on main branch
 
----
+- deploy-*.yml workflows
+    - Service-specific deploy pipelines for frontend and each backend service
 
-## 6. API Contract (Contractual Summary)
-| Service | Method | Endpoint | Description |
-| :--- | :--- | :--- | :--- |
-| **Auth Hub** | POST | `/api/auth/register` | Register new user with specific role |
-| **Auth Hub** | POST | `/api/auth/login` | Validate and start secure session |
-| **Student** | POST | `/api/students` | Self-Register/Create student profile |
-| **Student** | GET | `/api/students/:id/dashboard` | Integration: Fetch profile + results |
-| **Teacher** | POST | `/api/teachers/:id/add-mentee` | **NEW**: Register student as teacher's mentee |
-| **Teacher** | GET | `/api/teachers/:id/mentees` | **NEW**: Retrieve all mentees of a teacher |
-| **Teacher** | DELETE | `/api/teachers/:id/mentees/:studentId` | **NEW**: Remove student as mentee |
-| **Teacher** | GET | `/api/teachers/:id/dashboard` | **NEW**: Teacher dashboard with mentees + class stats |
-| **Teacher** | GET | `/api/teachers/:id/class-stats` | Integration: Fetch subject analytics |
-| **Course** | GET | `/api/courses/:id/full-info` | Integration: Fetch course + faculty bio |
-| **Result** | POST | `/api/results` | Integration: Post result + update student rank |
+- deploy-arm-template.yml
+    - Full-stack deployment using apps.json and secure parameters
 
----
+## Local Run
 
-## 7. How to Run Locally
-1. Clone the repository.
-2. Run `docker-compose up --build`.
-3. Dashboard: `http://localhost:3000`.
-4. Inspect DBs: See ports 27017-27020 in **MongoDB Compass**.
+1. Install Docker Desktop.
+2. From project root, run:
+
+```bash
+docker-compose up --build
+```
+
+3. Access frontend:
+- http://localhost:3000
+
+4. Service ports:
+- student-service: 5001
+- teacher-service: 5002
+- course-service: 5003
+- result-service: 5004
+
+## Cloud Deployment
+
+- Template file: apps.json
+- Managed platform: Azure Container Apps
+- Deploy using:
+    - GitHub workflow: .github/workflows/deploy-arm-template.yml
+    - Or Azure CLI with required secure parameters
+
+## Repository Structure
+
+```text
+.
+├─ .github/workflows/
+├─ frontend/
+├─ services/
+│  ├─ student-service/
+│  ├─ teacher-service/
+│  ├─ course-service/
+│  └─ result-service/
+├─ apps.json
+├─ docker-compose.yml
+└─ PROJECT_OVERVIEW.md
+```
