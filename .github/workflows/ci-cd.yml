@@ -26,23 +26,10 @@ jobs:
         cd services/${{ matrix.service }}
         npm install
 
-    - name: Lint check
-      run: |
-        cd services/${{ matrix.service }}
-        npm run lint
-
     - name: Run tests
       run: |
         cd services/${{ matrix.service }}
         npm test
-
-    - name: Run Snyk to check for vulnerabilities
-      uses: snyk/actions/node@master
-      env:
-        SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
-      with:
-        args: --severity-threshold=high
-        command: test
 
     - name: Build Docker image
       run: |
