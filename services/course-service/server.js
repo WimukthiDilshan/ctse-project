@@ -9,7 +9,19 @@ const rateLimit = require('express-rate-limit');
 dotenv.config();
 
 const app = express();
-app.use(cors());
+const allowedOrigins = (process.env.CORS_ORIGINS || 'http://localhost:3000')
+    .split(',')
+    .map(origin => origin.trim())
+    .filter(Boolean);
+
+app.use(cors({
+    origin: (origin, callback) => {
+        if (!origin || allowedOrigins.includes(origin)) {
+            return callback(null, true);
+        }
+        return callback(new Error('Not allowed by CORS'));
+    }
+}));
 app.use(helmet());
 app.use(express.json());
 app.use(rateLimit({ windowMs: 15 * 60 * 1000, max: 300 }));
@@ -18,9 +30,11 @@ const PORT = process.env.PORT || 5003;
 const TEACHER_SERVICE_URL = process.env.TEACHER_SERVICE_URL || 'http://localhost:5002';
 
 // MongoDB Connection
-mongoose.connect(process.env.MONGO_URI || 'mongodb://localhost:27017/course_db')
-    .then(() => console.log('Course DB Connected'))
-    .catch(err => console.error('Course DB Connection Error:', err));
+if (process.env.NODE_ENV !== 'test') {
+    mongoose.connect(process.env.MONGO_URI || 'mongodb://localhost:27017/course_db')
+        .then(() => console.log('Course DB Connected'))
+        .catch(err => console.error('Course DB Connection Error:', err));
+}
 
 // Course Schema
 const courseSchema = new mongoose.Schema({
@@ -38,6 +52,14 @@ app.get('/health', (req, res) => res.send('Course Service is healthy'));
 // Create Course
 app.post('/api/courses', async (req, res) => {
     try {
+        const { title, code, teacherId } = req.body;
+        if (!title || !code) {
+            return res.status(400).json({ error: 'title and code are required' });
+        }
+        if (teacherId && !mongoose.Types.ObjectId.isValid(teacherId)) {
+            return res.status(400).json({ error: 'teacherId must be a valid ObjectId' });
+        }
+
         const course = new Course(req.body);
         await course.save();
         res.status(201).json(course);
@@ -95,6 +117,10 @@ app.get('/api/courses/:id', async (req, res) => {
     }
 });
 
-app.listen(PORT, () => {
-    console.log(`Course Service running on port ${PORT}`);
-});
+if (require.main === module) {
+    app.listen(PORT, () => {
+        console.log(`Course Service running on port ${PORT}`);
+    });
+}
+
+module.exports = app;

@@ -16,13 +16,18 @@ function StudentView() {
     const [showEnrollForm, setShowEnrollForm] = useState(false);
     const currentUser = JSON.parse(localStorage.getItem('user'));
 
+    const getAuthConfig = () => {
+        const token = JSON.parse(localStorage.getItem('user'))?.token;
+        return token ? { headers: { Authorization: `Bearer ${token}` } } : {};
+    };
+
     useEffect(() => {
         fetchStudents();
         fetchCourses();
     }, []);
 
     const fetchStudents = () => {
-        axios.get(STUDENT_API).then(res => {
+        axios.get(STUDENT_API, getAuthConfig()).then(res => {
             let data = res.data;
             if (currentUser && currentUser.role === 'Student') {
                 data = data.filter(s => s.email === currentUser.email);
@@ -52,11 +57,12 @@ function StudentView() {
 
     const handleSubmit = (e) => {
         e.preventDefault();
+        const parsedAge = formData.age === '' ? undefined : Number(formData.age);
         const studentPayload = currentUser?.role === 'Student'
-            ? { ...formData, email: currentUser.email }
-            : formData;
+            ? { ...formData, email: currentUser.email, age: parsedAge }
+            : { ...formData, age: parsedAge };
 
-        axios.post(STUDENT_API, studentPayload).then(() => {
+        axios.post(STUDENT_API, studentPayload, getAuthConfig()).then(() => {
             fetchStudents();
             setFormData({ name: '', email: '', age: '', grade: '' });
             setShowForm(false);
@@ -85,7 +91,7 @@ function StudentView() {
     };
 
     const viewDashboard = (id) => {
-        axios.get(`${STUDENT_API}/${id}/dashboard`).then(res => setSelectedDashboard(res.data)).catch(() => {
+        axios.get(`${STUDENT_API}/${id}/dashboard`, getAuthConfig()).then(res => setSelectedDashboard(res.data)).catch(() => {
             setSelectedDashboard({
                 student: students.find(s => s._id === id),
                 academicTranscript: [

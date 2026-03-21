@@ -123,6 +123,8 @@ Workflows are in .github/workflows:
 
 - ci-cd.yml
     - Installs dependencies
+    - Runs lint checks for each service
+    - Runs automated Jest tests for each service
     - Runs Snyk scan
     - Builds Docker images
     - Pushes images to Docker Hub on main branch

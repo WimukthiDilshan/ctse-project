@@ -14,8 +14,13 @@ function GradingPortal() {
     const [status, setStatus] = useState(null);
     const currentUser = JSON.parse(localStorage.getItem('user'));
 
+    const getAuthConfig = () => {
+        const token = JSON.parse(localStorage.getItem('user'))?.token;
+        return token ? { headers: { Authorization: `Bearer ${token}` } } : {};
+    };
+
     useEffect(() => {
-        axios.get(STUDENT_API).then(res => setStudents(res.data)).catch(() => {
+        axios.get(STUDENT_API, getAuthConfig()).then(res => setStudents(res.data)).catch(() => {
             setStudents([{ _id: '1', name: 'John Doe' }, { _id: '2', name: 'Jane Smith' }]);
         });
         axios.get(COURSE_API).then(res => setCourses(res.data)).catch(() => {
@@ -52,7 +57,12 @@ function GradingPortal() {
 
     const handleSubmit = (e) => {
         e.preventDefault();
-        axios.post(RESULT_API, formData)
+        const payload = {
+            ...formData,
+            marks: Number(formData.marks)
+        };
+
+        axios.post(RESULT_API, payload)
             .then(res => setStatus({ type: 'success', message: res.data.message }))
             .catch(err => setStatus({
                 type: 'success',

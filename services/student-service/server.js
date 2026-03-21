@@ -11,7 +11,19 @@ const jwt = require('jsonwebtoken');
 dotenv.config();
 
 const app = express();
-app.use(cors());
+const allowedOrigins = (process.env.CORS_ORIGINS || 'http://localhost:3000')
+    .split(',')
+    .map(origin => origin.trim())
+    .filter(Boolean);
+
+app.use(cors({
+    origin: (origin, callback) => {
+        if (!origin || allowedOrigins.includes(origin)) {
+            return callback(null, true);
+        }
+        return callback(new Error('Not allowed by CORS'));
+    }
+}));
 app.use(helmet());
 app.use(express.json());
 app.use(rateLimit({ windowMs: 15 * 60 * 1000, max: 300 }));
@@ -19,11 +31,42 @@ app.use(rateLimit({ windowMs: 15 * 60 * 1000, max: 300 }));
 const PORT = process.env.PORT || 5001;
 const RESULT_SERVICE_URL = process.env.RESULT_SERVICE_URL || 'http://localhost:5004';
 const JWT_SECRET = process.env.JWT_SECRET || 'change-me-in-production';
+const INTERNAL_SERVICE_TOKEN = process.env.INTERNAL_SERVICE_TOKEN || '';
+
+function authenticateJWT(req, res, next) {
+    const authHeader = req.headers.authorization || '';
+    if (!authHeader.startsWith('Bearer ')) {
+        return res.status(401).json({ error: 'Missing or invalid authorization header' });
+    }
+
+    const token = authHeader.substring(7);
+    try {
+        req.user = jwt.verify(token, JWT_SECRET);
+        return next();
+    } catch (error) {
+        return res.status(401).json({ error: 'Invalid or expired token' });
+    }
+}
+
+function requireServiceToken(req, res, next) {
+    if (!INTERNAL_SERVICE_TOKEN) {
+        return next();
+    }
+
+    const serviceToken = req.headers['x-service-token'];
+    if (serviceToken !== INTERNAL_SERVICE_TOKEN) {
+        return res.status(401).json({ error: 'Invalid service token' });
+    }
+
+    return next();
+}
 
 // MongoDB Connection
-mongoose.connect(process.env.MONGO_URI || 'mongodb://localhost:27017/student_db')
-    .then(() => console.log('Student DB Connected'))
-    .catch(err => console.error('Student DB Connection Error:', err));
+if (process.env.NODE_ENV !== 'test') {
+    mongoose.connect(process.env.MONGO_URI || 'mongodb://localhost:27017/student_db')
+        .then(() => console.log('Student DB Connected'))
+        .catch(err => console.error('Student DB Connection Error:', err));
+}
 
 // Student Schema
 const studentSchema = new mongoose.Schema({
@@ -52,6 +95,10 @@ app.get('/health', (req, res) => res.send('Student Service is healthy'));
 app.post('/api/auth/register', async (req, res) => {
     try {
         const { email, password, role } = req.body;
+        if (!email || !password || password.length < 8) {
+            return res.status(400).json({ error: 'Valid email and password (min 8 chars) are required' });
+        }
+
         const hashedPassword = await bcrypt.hash(password, 10);
         const user = new User({ email, password: hashedPassword, role });
         await user.save();
@@ -64,6 +111,10 @@ app.post('/api/auth/register', async (req, res) => {
 app.post('/api/auth/login', async (req, res) => {
     try {
         const { email, password } = req.body;
+        if (!email || !password) {
+            return res.status(400).json({ error: 'Email and password are required' });
+        }
+
         const user = await User.findOne({ email });
         if (!user) return res.status(401).json({ error: 'Invalid credentials' });
         const isValid = await bcrypt.compare(password, user.password);
@@ -77,8 +128,16 @@ app.post('/api/auth/login', async (req, res) => {
 });
 
 // Create Student
-app.post('/api/students', async (req, res) => {
+app.post('/api/students', authenticateJWT, async (req, res) => {
     try {
+        const { name, email, age } = req.body;
+        if (!name || !email) {
+            return res.status(400).json({ error: 'name and email are required' });
+        }
+        if (age !== undefined && (typeof age !== 'number' || age < 0)) {
+            return res.status(400).json({ error: 'age must be a non-negative number' });
+        }
+
         const student = new Student(req.body);
         await student.save();
         res.status(201).json(student);
@@ -88,7 +147,7 @@ app.post('/api/students', async (req, res) => {
 });
 
 // Get All Students
-app.get('/api/students', async (req, res) => {
+app.get('/api/students', authenticateJWT, async (req, res) => {
     try {
         const students = await Student.find();
         res.json(students);
@@ -98,7 +157,7 @@ app.get('/api/students', async (req, res) => {
 });
 
 // Get Student Dashboard (Creative integration: Calls Result Service)
-app.get('/api/students/:id/dashboard', async (req, res) => {
+app.get('/api/students/:id/dashboard', authenticateJWT, async (req, res) => {
     try {
         const student = await Student.findById(req.params.id);
         if (!student) return res.status(404).json({ error: 'Student not found' });
@@ -124,9 +183,14 @@ app.get('/api/students/:id/dashboard', async (req, res) => {
 });
 
 // Update Rank (Called by Result Service)
-app.patch('/api/students/:id/rank', async (req, res) => {
+app.patch('/api/students/:id/rank', requireServiceToken, async (req, res) => {
     try {
         const { rank } = req.body;
+        const allowedRanks = ['Bronze', 'Silver', 'Gold'];
+        if (!allowedRanks.includes(rank)) {
+            return res.status(400).json({ error: 'rank must be one of Bronze, Silver, Gold' });
+        }
+
         const student = await Student.findByIdAndUpdate(req.params.id, { rank }, { new: true });
         res.json({ message: 'Rank updated', student });
     } catch (err) {
@@ -135,7 +199,7 @@ app.patch('/api/students/:id/rank', async (req, res) => {
 });
 
 // Get Student (Internal)
-app.get('/api/students/:id', async (req, res) => {
+app.get('/api/students/:id', requireServiceToken, async (req, res) => {
     try {
         const student = await Student.findById(req.params.id);
         if (!student) return res.status(404).json({ error: 'Student not found' });
@@ -145,6 +209,10 @@ app.get('/api/students/:id', async (req, res) => {
     }
 });
 
-app.listen(PORT, () => {
-    console.log(`Student Service running on port ${PORT}`);
-});
+if (require.main === module) {
+    app.listen(PORT, () => {
+        console.log(`Student Service running on port ${PORT}`);
+    });
+}
+
+module.exports = app;

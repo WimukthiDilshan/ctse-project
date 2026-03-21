@@ -9,7 +9,19 @@ const rateLimit = require('express-rate-limit');
 dotenv.config();
 
 const app = express();
-app.use(cors());
+const allowedOrigins = (process.env.CORS_ORIGINS || 'http://localhost:3000')
+    .split(',')
+    .map(origin => origin.trim())
+    .filter(Boolean);
+
+app.use(cors({
+    origin: (origin, callback) => {
+        if (!origin || allowedOrigins.includes(origin)) {
+            return callback(null, true);
+        }
+        return callback(new Error('Not allowed by CORS'));
+    }
+}));
 app.use(helmet());
 app.use(express.json());
 app.use(rateLimit({ windowMs: 15 * 60 * 1000, max: 300 }));
@@ -19,9 +31,11 @@ const RESULT_SERVICE_URL = process.env.RESULT_SERVICE_URL || 'http://localhost:5
 const STUDENT_SERVICE_URL = process.env.STUDENT_SERVICE_URL || 'http://localhost:5001';
 
 // MongoDB Connection
-mongoose.connect(process.env.MONGO_URI || 'mongodb://localhost:27017/teacher_db')
-    .then(() => console.log('Teacher DB Connected'))
-    .catch(err => console.error('Teacher DB Connection Error:', err));
+if (process.env.NODE_ENV !== 'test') {
+    mongoose.connect(process.env.MONGO_URI || 'mongodb://localhost:27017/teacher_db')
+        .then(() => console.log('Teacher DB Connected'))
+        .catch(err => console.error('Teacher DB Connection Error:', err));
+}
 
 // Teacher Schema with Mentee Management
 const teacherSchema = new mongoose.Schema({
@@ -47,6 +61,11 @@ app.get('/health', (req, res) => res.send('Teacher Service is healthy'));
 // Create Teacher
 app.post('/api/teachers', async (req, res) => {
     try {
+        const { name, email } = req.body;
+        if (!name || !email) {
+            return res.status(400).json({ error: 'name and email are required' });
+        }
+
         const teacher = new Teacher(req.body);
         await teacher.save();
         res.status(201).json(teacher);
@@ -107,6 +126,9 @@ app.post('/api/teachers/:id/add-mentee', async (req, res) => {
     try {
         const { studentId } = req.body;
         if (!studentId) return res.status(400).json({ error: 'Student ID is required' });
+        if (!mongoose.Types.ObjectId.isValid(studentId)) {
+            return res.status(400).json({ error: 'studentId must be a valid ObjectId' });
+        }
 
         // Verify student exists in Student Service
         let studentData;
@@ -166,6 +188,10 @@ app.get('/api/teachers/:id/mentees', async (req, res) => {
 // Remove Student as Mentee
 app.delete('/api/teachers/:id/mentees/:studentId', async (req, res) => {
     try {
+        if (!mongoose.Types.ObjectId.isValid(req.params.studentId)) {
+            return res.status(400).json({ error: 'studentId must be a valid ObjectId' });
+        }
+
         const teacher = await Teacher.findById(req.params.id);
         if (!teacher) return res.status(404).json({ error: 'Teacher not found' });
 
@@ -220,6 +246,10 @@ app.get('/api/teachers/:id/dashboard', async (req, res) => {
     }
 });
 
-app.listen(PORT, () => {
-    console.log(`Teacher Service running on port ${PORT}`);
-});
+if (require.main === module) {
+    app.listen(PORT, () => {
+        console.log(`Teacher Service running on port ${PORT}`);
+    });
+}
+
+module.exports = app;

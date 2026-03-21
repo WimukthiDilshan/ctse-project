@@ -9,19 +9,32 @@ const rateLimit = require('express-rate-limit');
 dotenv.config();
 
 const app = express();
-app.use(cors());
+const allowedOrigins = (process.env.CORS_ORIGINS || 'http://localhost:3000')
+    .split(',')
+    .map(origin => origin.trim())
+    .filter(Boolean);
+
+app.use(cors({
+    origin: (origin, callback) => {
+        if (!origin || allowedOrigins.includes(origin)) {
+            return callback(null, true);
+        }
+        return callback(new Error('Not allowed by CORS'));
+    }
+}));
 app.use(helmet());
 app.use(express.json());
 app.use(rateLimit({ windowMs: 15 * 60 * 1000, max: 300 }));
 
 const PORT = process.env.PORT || 5004;
 const STUDENT_SERVICE_URL = process.env.STUDENT_SERVICE_URL || 'http://localhost:5001';
-const COURSE_SERVICE_URL = process.env.COURSE_SERVICE_URL || 'http://localhost:5003';
 
 // MongoDB Connection
-mongoose.connect(process.env.MONGO_URI || 'mongodb://localhost:27017/result_db')
-    .then(() => console.log('Result DB Connected'))
-    .catch(err => console.error('Result DB Connection Error:', err));
+if (process.env.NODE_ENV !== 'test') {
+    mongoose.connect(process.env.MONGO_URI || 'mongodb://localhost:27017/result_db')
+        .then(() => console.log('Result DB Connected'))
+        .catch(err => console.error('Result DB Connection Error:', err));
+}
 
 // Result Schema
 const resultSchema = new mongoose.Schema({
@@ -40,6 +53,15 @@ app.get('/health', (req, res) => res.send('Result Service is healthy'));
 app.post('/api/results', async (req, res) => {
     try {
         const { studentId, courseId, marks, subject } = req.body;
+        if (!studentId || !courseId || typeof marks !== 'number' || !subject) {
+            return res.status(400).json({ error: 'studentId, courseId, numeric marks, and subject are required' });
+        }
+        if (!mongoose.Types.ObjectId.isValid(studentId) || !mongoose.Types.ObjectId.isValid(courseId)) {
+            return res.status(400).json({ error: 'studentId and courseId must be valid ObjectIds' });
+        }
+        if (marks < 0 || marks > 100) {
+            return res.status(400).json({ error: 'marks must be between 0 and 100' });
+        }
 
         // 1. Save result
         const result = new Result({ studentId, courseId, marks, subject });
@@ -93,6 +115,10 @@ app.get('/api/results/stats/subject/:subject', async (req, res) => {
     }
 });
 
-app.listen(PORT, () => {
-    console.log(`Result Service running on port ${PORT}`);
-});
+if (require.main === module) {
+    app.listen(PORT, () => {
+        console.log(`Result Service running on port ${PORT}`);
+    });
+}
+
+module.exports = app;

@@ -19,6 +19,11 @@ function TeacherView() {
     const [error, setError] = useState('');
     const [studentSearch, setStudentSearch] = useState('');
 
+    const getAuthConfig = () => {
+        const token = JSON.parse(localStorage.getItem('user'))?.token;
+        return token ? { headers: { Authorization: `Bearer ${token}` } } : {};
+    };
+
     useEffect(() => {
         fetchTeachers();
         fetchStudents();
@@ -34,7 +39,7 @@ function TeacherView() {
     };
 
     const fetchStudents = () => {
-        axios.get(STUDENT_API)
+        axios.get(STUDENT_API, getAuthConfig())
             .then(res => setStudents(res.data || []))
             .catch(() => setStudents([]));
     };
