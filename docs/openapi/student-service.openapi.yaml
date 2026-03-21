@@ -1,0 +1,205 @@
+openapi: 3.0.3
+info:
+  title: Student Service API
+  version: 1.0.0
+  description: Authentication and student profile service.
+servers:
+  - url: http://localhost:5001
+paths:
+  /health:
+    get:
+      summary: Health check
+      responses:
+        "200":
+          description: Service health message
+          content:
+            text/plain:
+              schema:
+                type: string
+  /api/auth/register:
+    post:
+      summary: Register user account
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegisterRequest"
+      responses:
+        "201":
+          description: User registered
+        "400":
+          description: Validation or duplicate user error
+  /api/auth/login:
+    post:
+      summary: Login user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginRequest"
+      responses:
+        "200":
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LoginResponse"
+        "401":
+          description: Invalid credentials
+  /api/students:
+    post:
+      summary: Create student
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StudentInput"
+      responses:
+        "201":
+          description: Student created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Student"
+    get:
+      summary: Get all students
+      responses:
+        "200":
+          description: Student list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Student"
+  /api/students/{id}:
+    get:
+      summary: Get student by id
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Student found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Student"
+        "404":
+          description: Student not found
+  /api/students/{id}/dashboard:
+    get:
+      summary: Get student dashboard
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Dashboard payload
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StudentDashboard"
+        "404":
+          description: Student not found
+  /api/students/{id}/rank:
+    patch:
+      summary: Update student rank
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [rank]
+              properties:
+                rank:
+                  type: string
+      responses:
+        "200":
+          description: Rank updated
+components:
+  schemas:
+    RegisterRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+        role:
+          type: string
+          enum: [Master Admin, Student, Teacher, Course Lead, Result Lead]
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+    LoginResponse:
+      type: object
+      properties:
+        email:
+          type: string
+        role:
+          type: string
+        id:
+          type: string
+        token:
+          type: string
+    StudentInput:
+      type: object
+      required: [name, email]
+      properties:
+        name:
+          type: string
+        email:
+          type: string
+          format: email
+        age:
+          type: integer
+        grade:
+          type: string
+        rank:
+          type: string
+          default: Bronze
+    Student:
+      allOf:
+        - $ref: "#/components/schemas/StudentInput"
+        - type: object
+          properties:
+            _id:
+              type: string
+    StudentDashboard:
+      type: object
+      properties:
+        student:
+          $ref: "#/components/schemas/Student"
+        academicTranscript:
+          oneOf:
+            - type: array
+              items:
+                type: object
+            - type: string
+        message:
+          type: string

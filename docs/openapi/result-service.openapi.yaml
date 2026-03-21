@@ -1,0 +1,88 @@
+openapi: 3.0.3
+info:
+  title: Result Service API
+  version: 1.0.0
+  description: Result posting, student result retrieval, and subject stats service.
+servers:
+  - url: http://localhost:5004
+paths:
+  /health:
+    get:
+      summary: Health check
+      responses:
+        "200":
+          description: Service health message
+  /api/results:
+    post:
+      summary: Create result and trigger student rank update
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ResultInput"
+      responses:
+        "201":
+          description: Result created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  result:
+                    $ref: "#/components/schemas/Result"
+                  message:
+                    type: string
+        "400":
+          description: Validation error
+  /api/results/student/{studentId}:
+    get:
+      summary: Get results by student id
+      parameters:
+        - in: path
+          name: studentId
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Student result list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Result"
+  /api/results/stats/subject/{subject}:
+    get:
+      summary: Get aggregated stats for subject
+      parameters:
+        - in: path
+          name: subject
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Subject statistics
+components:
+  schemas:
+    ResultInput:
+      type: object
+      required: [studentId, courseId, marks]
+      properties:
+        studentId:
+          type: string
+        courseId:
+          type: string
+        marks:
+          type: number
+        subject:
+          type: string
+    Result:
+      allOf:
+        - $ref: "#/components/schemas/ResultInput"
+        - type: object
+          properties:
+            _id:
+              type: string

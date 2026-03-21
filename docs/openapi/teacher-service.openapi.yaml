@@ -1,0 +1,179 @@
+openapi: 3.0.3
+info:
+  title: Teacher Service API
+  version: 1.0.0
+  description: Teacher profile, mentee management, and class stats service.
+servers:
+  - url: http://localhost:5002
+paths:
+  /health:
+    get:
+      summary: Health check
+      responses:
+        "200":
+          description: Service health message
+  /api/teachers:
+    post:
+      summary: Create teacher
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TeacherInput"
+      responses:
+        "201":
+          description: Teacher created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Teacher"
+    get:
+      summary: Get all teachers
+      responses:
+        "200":
+          description: Teacher list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Teacher"
+  /api/teachers/{id}:
+    get:
+      summary: Get teacher by id
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Teacher found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Teacher"
+        "404":
+          description: Teacher not found
+  /api/teachers/{id}/class-stats:
+    get:
+      summary: Get class stats for teacher subject
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Teacher stats response
+  /api/teachers/{id}/add-mentee:
+    post:
+      summary: Add student as mentee
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [studentId]
+              properties:
+                studentId:
+                  type: string
+      responses:
+        "201":
+          description: Mentee added
+        "400":
+          description: Invalid input or duplicate mentee
+        "404":
+          description: Teacher or student not found
+  /api/teachers/{id}/mentees:
+    get:
+      summary: Get all mentees of teacher
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Mentee list
+  /api/teachers/{id}/mentees/{studentId}:
+    delete:
+      summary: Remove mentee
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+        - in: path
+          name: studentId
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Mentee removed
+        "404":
+          description: Teacher or mentee not found
+  /api/teachers/{id}/dashboard:
+    get:
+      summary: Teacher dashboard with mentees and class stats
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Dashboard payload
+components:
+  schemas:
+    Mentee:
+      type: object
+      properties:
+        studentId:
+          type: string
+        studentName:
+          type: string
+        studentEmail:
+          type: string
+          format: email
+        addedDate:
+          type: string
+          format: date-time
+    TeacherInput:
+      type: object
+      required: [name, email]
+      properties:
+        name:
+          type: string
+        email:
+          type: string
+          format: email
+        subject:
+          type: string
+        bio:
+          type: string
+    Teacher:
+      allOf:
+        - $ref: "#/components/schemas/TeacherInput"
+        - type: object
+          properties:
+            _id:
+              type: string
+            mentees:
+              type: array
+              items:
+                $ref: "#/components/schemas/Mentee"

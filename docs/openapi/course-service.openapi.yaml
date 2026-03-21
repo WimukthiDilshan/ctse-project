@@ -1,0 +1,92 @@
+openapi: 3.0.3
+info:
+  title: Course Service API
+  version: 1.0.0
+  description: Course management and full course info service.
+servers:
+  - url: http://localhost:5003
+paths:
+  /health:
+    get:
+      summary: Health check
+      responses:
+        "200":
+          description: Service health message
+  /api/courses:
+    post:
+      summary: Create course
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CourseInput"
+      responses:
+        "201":
+          description: Course created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Course"
+    get:
+      summary: Get all courses
+      responses:
+        "200":
+          description: Course list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Course"
+  /api/courses/{id}:
+    get:
+      summary: Get course by id
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Course found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Course"
+        "404":
+          description: Course not found
+  /api/courses/{id}/full-info:
+    get:
+      summary: Get full course info with teacher data
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Course and faculty details
+components:
+  schemas:
+    CourseInput:
+      type: object
+      required: [title, code]
+      properties:
+        title:
+          type: string
+        code:
+          type: string
+        credits:
+          type: integer
+        teacherId:
+          type: string
+    Course:
+      allOf:
+        - $ref: "#/components/schemas/CourseInput"
+        - type: object
+          properties:
+            _id:
+              type: string

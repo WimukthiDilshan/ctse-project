@@ -74,6 +74,12 @@ graph TD
 
 ## Key API Endpoints
 
+OpenAPI contracts:
+- [docs/openapi/student-service.openapi.yaml](docs/openapi/student-service.openapi.yaml)
+- [docs/openapi/teacher-service.openapi.yaml](docs/openapi/teacher-service.openapi.yaml)
+- [docs/openapi/course-service.openapi.yaml](docs/openapi/course-service.openapi.yaml)
+- [docs/openapi/result-service.openapi.yaml](docs/openapi/result-service.openapi.yaml)
+
 ### Student Service
 - POST /api/auth/register
 - POST /api/auth/login
