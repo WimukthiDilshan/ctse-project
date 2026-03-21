@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import axios from 'axios';
 import { Lock, Mail, UserPlus, ShieldCheck } from 'lucide-react';
 
-const AUTH_API = 'http://localhost:5001/api/auth';
+const AUTH_API = 'https://student-service.purplemoss-2238a54a.southeastasia.azurecontainerapps.io/api/auth';
 
 function AuthView({ onLoginSuccess }) {
     const [isSignup, setIsSignup] = useState(false);

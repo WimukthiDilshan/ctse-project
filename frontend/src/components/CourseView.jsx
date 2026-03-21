@@ -2,8 +2,8 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { BookPlus } from 'lucide-react';
 
-const COURSE_API = 'http://localhost:5003/api/courses';
-const TEACHER_API = 'http://localhost:5002/api/teachers';
+const COURSE_API = 'https://course-service.purplemoss-2238a54a.southeastasia.azurecontainerapps.io/api/courses';
+const TEACHER_API = 'https://teacher-service.purplemoss-2238a54a.southeastasia.azurecontainerapps.io/api/teachers';
 
 function CourseView() {
     const [courses, setCourses] = useState([]);

@@ -2,9 +2,9 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { PlusCircle, Info } from 'lucide-react';
 
-const STUDENT_API = 'http://localhost:5001/api/students';
-const COURSE_API = 'http://localhost:5003/api/courses';
-const RESULT_API = 'http://localhost:5004/api/results';
+const STUDENT_API = 'https://student-service.purplemoss-2238a54a.southeastasia.azurecontainerapps.io/api/students';
+const COURSE_API = 'https://course-service.purplemoss-2238a54a.southeastasia.azurecontainerapps.io/api/courses';
+const RESULT_API = 'https://result-service.purplemoss-2238a54a.southeastasia.azurecontainerapps.io/api/results';
 
 function StudentView() {
     const [students, setStudents] = useState([]);

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { UserPlus } from 'lucide-react';
 
-const TEACHER_API = 'http://localhost:5002/api/teachers';
+const TEACHER_API = 'https://teacher-service.purplemoss-2238a54a.southeastasia.azurecontainerapps.io/api/teachers';
 
 function TeacherView() {
     const [teachers, setTeachers] = useState([]);
