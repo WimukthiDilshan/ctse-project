@@ -38,8 +38,10 @@ services:
     environment:
       - MONGO_URI=mongodb://teacher-db:27017/teacher_db
       - RESULT_SERVICE_URL=http://result-service:5004
+      - STUDENT_SERVICE_URL=http://student-service:5001
     depends_on:
       - teacher-db
+      - student-service
 
   course-service:
     build: ./services/course-service

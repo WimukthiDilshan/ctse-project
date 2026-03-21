@@ -14,7 +14,7 @@
       "properties": {
         "managedEnvironmentId": "[variables('envId')]",
         "configuration": { "ingress": { "external": true, "targetPort": 3000 } },
-        "template": { "containers": [{ "name": "frontend", "image": "wimukthidocker/frontend:latest", "env": [{"name": "FORCE_UPDATE", "value": "3"}] }] }
+        "template": { "containers": [{ "name": "frontend", "image": "wimukthidocker/frontend:mentor-v2", "env": [{"name": "FORCE_UPDATE", "value": "7"}] }] }
       }
     },
     {
@@ -36,7 +36,7 @@
       "properties": {
         "managedEnvironmentId": "[variables('envId')]",
         "configuration": { "ingress": { "external": true, "targetPort": 5002 } },
-        "template": { "containers": [{ "name": "teacher-service", "image": "wimukthidocker/teacher-service:latest", "env": [{"name": "MONGO_URI", "value": "mongodb+srv://wimukthi2010_db_user:OOamEpUlOFQ8lPWn@cluster0.awyrjzu.mongodb.net/teacher_db?appName=Cluster0"}, {"name": "RESULT_SERVICE_URL", "value": "http://result-service"}, {"name": "FORCE_UPDATE", "value": "6"}] }] }
+        "template": { "containers": [{ "name": "teacher-service", "image": "wimukthidocker/teacher-service:latest", "env": [{"name": "MONGO_URI", "value": "mongodb+srv://wimukthi2010_db_user:OOamEpUlOFQ8lPWn@cluster0.awyrjzu.mongodb.net/teacher_db?appName=Cluster0"}, {"name": "RESULT_SERVICE_URL", "value": "http://result-service"}, {"name": "STUDENT_SERVICE_URL", "value": "http://student-service"}, {"name": "FORCE_UPDATE", "value": "7"}] }] }
       }
     },
     {

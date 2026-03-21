@@ -52,6 +52,7 @@ Each service represents a core component of a cohesive educational ecosystem:
 Services integrate via RESTful APIs over an internal network:
 - **Example 1**: The `Result Service` sends a `PATCH` request to the `Student Service` to update a student's `rank` (milestone) immediately after a grade is posted.
 - **Example 2**: The `Course Service` performs a `GET` request to the `Teacher Service` to include the instructor's bio when a user explores course details.
+- **Example 3**: The `Teacher Service` calls the `Student Service` to verify students exist before registering them as mentees, enabling mentor-mentee relationship tracking.
 
 ---
 
@@ -78,6 +79,30 @@ The system implements a granular **Role-Based Access Control (RBAC)** system. Us
 - **Solution**: Implemented `cors` middleware across all Node.js services to securely allow required origins.
 - **Challenge**: Synchronizing state (Rank) across disparate databases.
 - **Solution**: Implemented an event-driven style REST hook where the `Result Service` triggers a rank update in the `Student Service`.
+- **Challenge**: Teachers need to establish mentor-mentee relationships with students.
+- **Solution**: Extended the `Teacher Service` to integrate with the `Student Service`, allowing teachers to register students as mentees with automatic validation and role-based dashboard views.
+
+---
+
+## 5.1 Teacher Mentor-Mentee Feature
+The Teacher Service now supports comprehensive mentor-mentee relationship management:
+
+### Key Features:
+- **Register Mentees**: Teachers can add registered students as mentees via `POST /api/teachers/:id/add-mentee`
+- **Validate Students**: System automatically verifies student existence in Student Service before adding
+- **Prevent Duplicates**: Cannot add the same student twice as a mentee
+- **View Mentees**: Teachers can view all their mentees with `/api/teachers/:id/mentees`
+- **Remove Mentees**: Teachers can remove mentees using `DELETE /api/teachers/:id/mentees/:studentId`
+- **Dashboard View**: Comprehensive dashboard showing mentees + class statistics at `/api/teachers/:id/dashboard`
+
+### Data Stored:
+Each mentee relationship includes:
+- Student ID and Name
+- Student Email
+- Date Mentee was Added
+- Teacher maintains full mentee history
+
+For complete documentation, see [TEACHER_SERVICE_MENTOR_GUIDE.md](TEACHER_SERVICE_MENTOR_GUIDE.md)
 
 ---
 
@@ -88,6 +113,10 @@ The system implements a granular **Role-Based Access Control (RBAC)** system. Us
 | **Auth Hub** | POST | `/api/auth/login` | Validate and start secure session |
 | **Student** | POST | `/api/students` | Self-Register/Create student profile |
 | **Student** | GET | `/api/students/:id/dashboard` | Integration: Fetch profile + results |
+| **Teacher** | POST | `/api/teachers/:id/add-mentee` | **NEW**: Register student as teacher's mentee |
+| **Teacher** | GET | `/api/teachers/:id/mentees` | **NEW**: Retrieve all mentees of a teacher |
+| **Teacher** | DELETE | `/api/teachers/:id/mentees/:studentId` | **NEW**: Remove student as mentee |
+| **Teacher** | GET | `/api/teachers/:id/dashboard` | **NEW**: Teacher dashboard with mentees + class stats |
 | **Teacher** | GET | `/api/teachers/:id/class-stats` | Integration: Fetch subject analytics |
 | **Course** | GET | `/api/courses/:id/full-info` | Integration: Fetch course + faculty bio |
 | **Result** | POST | `/api/results` | Integration: Post result + update student rank |
